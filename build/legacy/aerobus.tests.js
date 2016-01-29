@@ -1959,59 +1959,228 @@
         });
       });
       describe('#when()', function () {
-        it('throws', function () {
-          assert.throws(function () {
-            return aerobus().root.when();
+        describe('throws', function () {
+          it('in channel', function () {
+            assert.throws(function () {
+              return aerobus().root.when();
+            });
+          });
+          it('in section', function () {
+            var bus = aerobus(),
+                section = bus('channel1', 'channel2');
+            assert.throws(function () {
+              return section.when();
+            });
           });
         });
       });
       describe('#when(@string)', function () {
-        it('returns instance of Aerobus.PLAN', function () {
-          assert.typeOf(aerobus().root.when('channel'), 'Aerobus.PLAN');
+        describe('returns instance of Aerobus.PLAN', function () {
+          it('in channel', function () {
+            assert.typeOf(aerobus().root.when('channel'), 'Aerobus.PLAN');
+          });
+          it('in section', function () {
+            var bus = aerobus(),
+                section = bus('channel1', 'channel2');
+            assert.typeOf(section.when('channel'), 'Aerobus.PLAN');
+          });
         });
-        it('the pending operation executes after publication of message in the observable channel', function () {
-          var bus = aerobus(),
-              channel1 = bus('channel1'),
-              channel2 = bus('channel2'),
-              result = 0,
-              subscriber = function subscriber() {
-            return ++result;
-          };
+        describe('the pending operation executes after publication of message in the observable channel', function () {
+          it('in channel', function () {
+            var bus = aerobus(),
+                channel1 = bus('channel1'),
+                channel2 = bus('channel2'),
+                result = 0,
+                subscriber = function subscriber() {
+              return ++result;
+            };
 
-          channel2.subscribe(subscriber).when('channel1').publish();
-          channel1.publish();
-          assert.strictEqual(result, 1);
+            channel2.subscribe(subscriber).when('channel1').publish();
+            channel1.publish();
+            assert.strictEqual(result, 1);
+          });
+          it('in section', function () {
+            var bus = aerobus(),
+                section = bus('channel1', 'channel2'),
+                channel = bus('channel'),
+                result = 0,
+                subscriber = function subscriber() {
+              return ++result;
+            };
+
+            section.subscribe(subscriber).when('channel').publish();
+            channel.publish();
+            assert.strictEqual(result, 2);
+          });
         });
-        it('possible to use all available methods in the pending operation', function () {
-          ['cycle', 'shuffle', 'bubble', 'clear', 'enable', 'forward', 'publish', 'reset', 'retain', 'subscribe', 'toggle', 'unsubscribe'].forEach(function (value) {
-            return assert.doesNotThrow(function () {
-              return aerobus().root.when('channel')[value];
+        describe('possible to use all available methods in the pending operation', function () {
+          var methods = ['cycle', 'shuffle', 'bubble', 'clear', 'enable', 'forward', 'publish', 'reset', 'retain', 'subscribe', 'toggle', 'unsubscribe'];
+          it('in channel', function () {
+            methods.forEach(function (value) {
+              return assert.doesNotThrow(function () {
+                return aerobus().root.when('channel')[value];
+              });
+            });
+          });
+          it('in section', function () {
+            var bus = aerobus(),
+                section = bus('channel1', 'channel2');
+            methods.forEach(function (value) {
+              return assert.doesNotThrow(function () {
+                return section.when('channel')[value];
+              });
             });
           });
         });
       });
       describe('#when(...@string)', function () {
-        it('the pending operation executes after publication of messages in all observable channels', function () {
-          var bus = aerobus(),
-              channel1 = bus('channel1'),
-              channel2 = bus('channel2'),
-              channel3 = bus('channel3'),
-              result = 0,
-              subscriber = function subscriber() {
-            return ++result;
-          };
+        describe('the pending operation executes after publication of messages in all observable channels', function () {
+          it('in channel', function () {
+            var bus = aerobus(),
+                channel1 = bus('channel1'),
+                channel2 = bus('channel2'),
+                channel3 = bus('channel3'),
+                result = 0,
+                subscriber = function subscriber() {
+              return ++result;
+            };
 
-          channel3.subscribe(subscriber).when('channel1', 'channel2').publish();
-          channel1.publish();
-          assert.strictEqual(result, 0);
-          channel2.publish();
-          assert.strictEqual(result, 1);
-          channel1.publish();
-          channel1.publish();
-          channel2.publish();
-          assert.strictEqual(result, 2);
-          channel2.publish();
-          assert.strictEqual(result, 3);
+            channel3.subscribe(subscriber).when('channel1', 'channel2').publish();
+            channel1.publish();
+            assert.strictEqual(result, 0);
+            channel2.publish();
+            assert.strictEqual(result, 1);
+            channel1.publish();
+            channel1.publish();
+            channel2.publish();
+            assert.strictEqual(result, 2);
+            channel2.publish();
+            assert.strictEqual(result, 3);
+          });
+          it('in section', function () {
+            var bus = aerobus(),
+                channel1 = bus('channel1'),
+                channel2 = bus('channel2'),
+                section = bus('channel3', 'channel4'),
+                result = 0,
+                subscriber = function subscriber() {
+              return ++result;
+            };
+
+            section.subscribe(subscriber).when('channel1', 'channel2').publish();
+            channel1.publish();
+            assert.strictEqual(result, 0);
+            channel2.publish();
+            assert.strictEqual(result, 2);
+            channel1.publish();
+            channel1.publish();
+            channel2.publish();
+            assert.strictEqual(result, 4);
+            channel2.publish();
+            assert.strictEqual(result, 6);
+          });
+        });
+      });
+      describe('#when(@function)', function () {
+        describe('throws', function () {
+          it('in channel', function () {
+            assert.throws(function () {
+              return aerobus().root.when(noop);
+            });
+          });
+          it('in section', function () {
+            var bus = aerobus(),
+                section = bus('channel1', 'channel2');
+            assert.throws(function () {
+              return section.when(noop);
+            });
+          });
+        });
+      });
+      describe('#when(@function, @string)', function () {
+        describe('sets filter published messages, the pending operation executes after publication of valid messages in the observable channel', function () {
+          it('in channel', function () {
+            var bus = aerobus(),
+                channel1 = bus('channel1'),
+                channel2 = bus('channel2'),
+                result = 0,
+                subscriber = function subscriber() {
+              return ++result;
+            },
+                filter = function filter(message) {
+              return message.data;
+            };
+
+            channel2.subscribe(subscriber).when(filter, 'channel1').publish();
+            channel1.publish();
+            assert.strictEqual(result, 0);
+            channel1.publish('some data');
+            assert.strictEqual(result, 1);
+          });
+          it('in section', function () {
+            var bus = aerobus(),
+                channel1 = bus('channel1'),
+                section = bus('channel2', 'channel3'),
+                result = 0,
+                subscriber = function subscriber() {
+              return ++result;
+            },
+                filter = function filter(message) {
+              return message.data;
+            };
+
+            section.subscribe(subscriber).when(filter, 'channel1').publish();
+            channel1.publish();
+            assert.strictEqual(result, 0);
+            channel1.publish('some data');
+            assert.strictEqual(result, 2);
+          });
+        });
+      });
+      describe('#when(@function, ...@string)', function () {
+        describe('sets filter published messages, the pending operation executes after publication of valid messages in all observable channels', function () {
+          it('in channel', function () {
+            var bus = aerobus(),
+                channel1 = bus('channel1'),
+                channel2 = bus('channel2'),
+                channel3 = bus('channel3'),
+                result = 0,
+                subscriber = function subscriber() {
+              return ++result;
+            },
+                filter = function filter(message) {
+              return message.data;
+            };
+
+            channel3.subscribe(subscriber).when(filter, 'channel1', 'channel2').publish();
+            channel1.publish();
+            channel2.publish();
+            assert.strictEqual(result, 0);
+            channel1.publish('some data');
+            channel2.publish('some data');
+            assert.strictEqual(result, 1);
+          });
+          it('in section', function () {
+            var bus = aerobus(),
+                channel1 = bus('channel1'),
+                channel2 = bus('channel2'),
+                section = bus('channel3', 'section4'),
+                result = 0,
+                subscriber = function subscriber() {
+              return ++result;
+            },
+                filter = function filter(message) {
+              return message.data;
+            };
+
+            section.subscribe(subscriber).when(filter, 'channel1', 'channel2').publish();
+            channel1.publish();
+            channel2.publish();
+            assert.strictEqual(result, 0);
+            channel1.publish('some data');
+            channel2.publish('some data');
+            assert.strictEqual(result, 2);
+          });
         });
       });
       describe('#unsubscribe()', function () {
